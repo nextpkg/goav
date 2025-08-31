@@ -15,7 +15,6 @@ import (
 // RFC 3261 - https://www.ietf.org/rfc/rfc3261.txt - 8.1.1.2 To
 // RFC 3261 - https://www.ietf.org/rfc/rfc3261.txt - 8.1.1.3 From
 // RFC 3261 - https://www.ietf.org/rfc/rfc3261.txt - 8.1.1.8 Contact
-//
 type SIPUser struct {
 	URIType string // Type of URI sip, sips, tel etc
 	Name    string // Name portion of URI
@@ -36,25 +35,33 @@ type SIPUser struct {
 // From/To: <sip:34020000001320000001@192.168.1.102:5060>;tag=1086912856
 
 // Contact: "Mr. Watson" <sip:watson@worcester.bell-telephone.com>
-//  ;q=0.7; expires=3600,
-//  "Mr. Watson" <mailto:watson@bell-telephone.com> ;q=0.1
+//
+//	;q=0.7; expires=3600,
+//	"Mr. Watson" <mailto:watson@bell-telephone.com> ;q=0.1
+//
 // Contact: <sips:bob@192.0.2.4>;expires=60
 // Contact: <sip:34020000001320000001@192.168.1.102:5060>
-//
 func NewSIPUser(uri string) *SIPUser {
 
 	su := &SIPUser{
-		URIType: "sip",
+		URIType: "sip", // Default URI type
 		Args:    make(Args),
 		Src:     uri,
 	}
 	pos, state := 0, _FieldBase
 
 	var name, user, host, port []byte
+	uriTypeFound := false // Track if we found a URI type in the string
 
 	for pos < len(uri) && uri[pos] != ';' {
+		// Skip spaces except when in name field
+		if uri[pos] == ' ' && state != _FieldName {
+			pos++
+			continue
+		}
 
-		if uri[pos] == '>' || (uri[pos] == ' ' && state != _FieldName) {
+		// Handle end of URI part
+		if uri[pos] == '>' {
 			state = _FieldBase
 			pos++
 			continue
@@ -62,53 +69,86 @@ func NewSIPUser(uri string) *SIPUser {
 
 		switch state {
 		case _FieldBase:
-
-			str := Substring(uri, pos, pos+4)
-			if str == "sip:" || str == "tel:" {
-				state = _FieldUser
-				su.URIType = uri[pos : pos+3]
-				pos = pos + 4
+			// Handle protocol type and URI start
+			if uri[pos] == '<' {
+				state = _FieldBase
+				pos++
 				continue
 			}
 
-			str = Substring(uri, pos, pos+5)
-			if str == "sips:" {
-				state = _FieldUser
-				su.URIType = uri[pos : pos+4]
-				pos = pos + 5
-				continue
+			// Check for protocol type
+			if pos+4 <= len(uri) {
+				str := Substring(uri, pos, pos+4)
+				if str == "sip:" {
+					state = _FieldUser
+					su.URIType = "sip"
+					uriTypeFound = true
+					pos = pos + 4
+					continue
+				}
+				if str == "tel:" {
+					state = _FieldUser
+					su.URIType = "tel"
+					uriTypeFound = true
+					pos = pos + 4
+					continue
+				}
 			}
 
-			if uri[pos] == '"' || su.URIType == "" {
+			if pos+5 <= len(uri) {
+				str := Substring(uri, pos, pos+5)
+				if str == "sips:" {
+					state = _FieldUser
+					su.URIType = "sips"
+					uriTypeFound = true
+					pos = pos + 5
+					continue
+				}
+			}
+
+			// Handle name field start
+			if uri[pos] == '"' {
 				state = _FieldName
+				pos++ // Skip the opening quote
 				continue
 			}
-		case _FieldName:
 
-			if uri[pos] == '"' || uri[pos] == '<' {
+			// If we haven't found a URI type yet, assume it's part of the name
+			if !uriTypeFound {
+				state = _FieldName
+				name = append(name, uri[pos])
+			}
+
+		case _FieldName:
+			if uri[pos] == '"' {
+				state = _FieldBase
+				pos++
+				continue
+			}
+			if uri[pos] == '<' {
 				state = _FieldBase
 				pos++
 				continue
 			}
 			name = append(name, uri[pos])
-		case _FieldUser:
 
+		case _FieldUser:
 			if uri[pos] == '@' {
 				state = _FieldHost
 				pos++
 				continue
 			}
 			user = append(user, uri[pos])
-		case _FieldHost:
 
+		case _FieldHost:
 			if uri[pos] == ':' {
 				state = _FieldPort
 				pos++
 				continue
 			}
 			host = append(host, uri[pos])
-		case _FieldPort:
 
+		case _FieldPort:
 			port = append(port, uri[pos])
 		}
 
