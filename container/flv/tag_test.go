@@ -3,8 +3,7 @@ package flv
 import (
 	"testing"
 
-	"github.com/moggle-mog/goav/packet"
-
+	"github.com/nextpkg/goav/packet"
 	"github.com/stretchr/testify/assert"
 )
 

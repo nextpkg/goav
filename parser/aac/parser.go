@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/moggle-mog/goav/container/flv"
+	"github.com/nextpkg/goav/container/flv"
 )
 
 // Parser aac解析器

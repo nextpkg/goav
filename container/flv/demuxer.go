@@ -2,7 +2,7 @@
 package flv
 
 import (
-	"github.com/moggle-mog/goav/packet"
+	"github.com/nextpkg/goav/packet"
 )
 
 // Demuxer FLV 解复用器

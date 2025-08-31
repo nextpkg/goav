@@ -3,8 +3,9 @@ package amf
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEnDecAMF0_Decode_String(t *testing.T) {

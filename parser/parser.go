@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/moggle-mog/goav/packet"
-	"github.com/moggle-mog/goav/parser/aac"
-	"github.com/moggle-mog/goav/parser/h264"
-	"github.com/moggle-mog/goav/parser/mp3"
+	"github.com/nextpkg/goav/packet"
+	"github.com/nextpkg/goav/parser/aac"
+	"github.com/nextpkg/goav/parser/h264"
+	"github.com/nextpkg/goav/parser/mp3"
 )
 
 // CodecParser 解析器

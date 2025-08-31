@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/moggle-mog/goav/container/flv"
-	"github.com/moggle-mog/goav/packet"
+	"github.com/nextpkg/goav/container/flv"
+	"github.com/nextpkg/goav/packet"
 	"github.com/stretchr/testify/assert"
 )
 

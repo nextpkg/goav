@@ -1,2 +1,2 @@
-# goav
-audio, video and transport protocol
+1. 音视频解析库
+2. Go 原生，不依赖任何 C 库

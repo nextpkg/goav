@@ -1,7 +1,7 @@
 package table
 
 import (
-	"github.com/moggle-mog/goav/packet"
+	"github.com/nextpkg/goav/packet"
 )
 
 const (

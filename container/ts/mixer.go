@@ -5,11 +5,10 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/moggle-mog/goav/container/ts/table"
-	"github.com/moggle-mog/goav/packet"
-	"github.com/moggle-mog/goav/parser"
-
-	"github.com/moggle-mog/goav/amf"
+	"github.com/nextpkg/goav/amf"
+	"github.com/nextpkg/goav/container/ts/table"
+	"github.com/nextpkg/goav/packet"
+	"github.com/nextpkg/goav/parser"
 )
 
 type cache struct {

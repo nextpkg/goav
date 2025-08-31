@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/moggle-mog/goav/container/ts/table"
-	"github.com/moggle-mog/goav/packet"
+	"github.com/nextpkg/goav/container/ts/table"
+	"github.com/nextpkg/goav/packet"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -7,9 +7,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/moggle-mog/goav/packet"
-
-	"github.com/moggle-mog/goav/amf"
+	"github.com/nextpkg/goav/amf"
+	"github.com/nextpkg/goav/packet"
 )
 
 const tagHdrLen = 11

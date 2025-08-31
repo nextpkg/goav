@@ -2,7 +2,7 @@
 package gop
 
 import (
-	"github.com/moggle-mog/goav/packet"
+	"github.com/nextpkg/goav/packet"
 )
 
 // frameCache 单帧缓存

@@ -1,7 +1,7 @@
 package gop
 
 import (
-	"github.com/moggle-mog/goav/packet"
+	"github.com/nextpkg/goav/packet"
 )
 
 // Cache RTMP缓存器

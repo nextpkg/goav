@@ -3,7 +3,7 @@ package gop
 import (
 	"errors"
 
-	"github.com/moggle-mog/goav/packet"
+	"github.com/nextpkg/goav/packet"
 )
 
 // 每个GOP的最大包数

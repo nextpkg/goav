@@ -1,4 +1,4 @@
-module github.com/moggle-mog/goav
+module github.com/nextpkg/goav
 
 go 1.14
 

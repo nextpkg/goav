@@ -3,7 +3,7 @@ package gop
 import (
 	"errors"
 
-	"github.com/moggle-mog/goav/packet"
+	"github.com/nextpkg/goav/packet"
 )
 
 // gopCache GOP缓存
