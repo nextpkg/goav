@@ -8,8 +8,10 @@ import (
 
 	"github.com/nextpkg/goav/packet"
 	"github.com/nextpkg/goav/rtmp/chunk"
+	"github.com/nextpkg/goav/rtmp/client"
 	"github.com/nextpkg/goav/rtmp/comm"
 	"github.com/nextpkg/goav/rtmp/message"
+	"github.com/nextpkg/goav/rtmp/server"
 	"github.com/nextpkg/goav/rtmp/slab"
 	"github.com/stretchr/testify/assert"
 )
@@ -79,8 +81,8 @@ func TestWriter_Write(t *testing.T) {
 	at := assert.New(t)
 
 	i, o := net.Pipe()
-	client := &ConnClient{
-		conn: &message.Conn{
+	client := &client.ConnClient{
+		Conn: &message.Conn{
 			Conn:                i,
 			Rw:                  comm.NewReadWriter(i, 1024),
 			Slab:                slab.NewSlab(),
@@ -91,7 +93,7 @@ func TestWriter_Write(t *testing.T) {
 			Chunks:              make(map[uint32]*chunk.ChunkStream),
 			Option:              message.DefaultOption,
 		},
-		transactionID: 0,
+		TransactionID: 0,
 	}
 
 	w := NewWriter(client)
@@ -116,7 +118,7 @@ func TestWriter_Write(t *testing.T) {
 
 	go func() {
 		time.Sleep(50 * time.Millisecond)
-		at.Nil(client.conn.Flush())
+		at.Nil(client.Conn.Flush())
 	}()
 
 	buf := make([]byte, 1024)
@@ -129,9 +131,9 @@ func TestReader_Read(t *testing.T) {
 	at := assert.New(t)
 
 	i, o := net.Pipe()
-	server := &ConnServer{
-		streamID: 1,
-		conn: &message.Conn{
+	server := &server.ConnServer{
+		StreamID: 1,
+		Conn: &message.Conn{
 			Conn:                i,
 			Rw:                  comm.NewReadWriter(i, 1024),
 			Slab:                slab.NewSlab(),
@@ -153,7 +155,7 @@ func TestReader_Read(t *testing.T) {
 	at.Nil(server.Write(cs))
 
 	go func() {
-		at.Nil(server.conn.Flush())
+		at.Nil(server.Conn.Flush())
 	}()
 
 	buf := make([]byte, 1024)

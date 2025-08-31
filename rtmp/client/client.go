@@ -17,6 +17,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ConnBufSize 连接缓冲大小
+const ConnBufSize = 4 * 1024
+
 // ConnClient RTMP客户端
 type ConnClient struct {
 	connect       comm.ConnectInfo // 客户端参数
@@ -53,7 +56,7 @@ func NewConnClientByURL(rtmpURL string, rtmpDialTimeout time.Duration) *ConnClie
 		return nil
 	}
 
-	c := message.NewConn(conn, comm.ConnBufSize)
+	c := message.NewConn(conn, ConnBufSize)
 
 	// RTMP服务
 	return NewConnClient(ps[0], ps[1], c)

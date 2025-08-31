@@ -8,6 +8,18 @@ import (
 	"go.uber.org/atomic"
 )
 
+// ActiveBaser is the basement of `alive`
+type ActiveBaser interface {
+	IsTimeout() bool
+}
+
+// AliveWriter 写保活
+type AliveWriter interface {
+	InfoBaser
+	ActiveBaser
+	RebaseTime()
+}
+
 // Active 用来辅助读写的超时处理
 type Active struct {
 	active        atomic.Int64

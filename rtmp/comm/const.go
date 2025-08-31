@@ -38,6 +38,3 @@ const (
 	OnStatus   = "onStatus"
 	OnBWDone   = "onBWDone"
 )
-
-// ConnBufSize 连接缓冲大小
-const ConnBufSize = 4 * 1024
