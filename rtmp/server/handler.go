@@ -226,7 +226,6 @@ func (s *ConnServer) handleConnect(args []interface{}) error {
 		case amf.Object:
 			// 命令对象
 			if k == 1 {
-
 				s.connectCommandMsg(v)
 				continue
 			}

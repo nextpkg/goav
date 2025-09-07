@@ -1,5 +1,5 @@
-// Package message rtmp 收发RTMP分块功能
-package message
+// Package chunk rtmp 收发RTMP分块功能
+package chunk
 
 import (
 	"encoding/binary"
@@ -9,10 +9,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/nextpkg/goav/rtmp/chunk"
-	"github.com/nextpkg/goav/rtmp/comm"
-	"github.com/nextpkg/goav/rtmp/slab"
 )
 
 // Option RTMP 连接选项
@@ -54,9 +50,9 @@ type Conn struct {
 	ackSent             uint32 // 客户端已接收的字节数
 	bandwidthLimitType  byte   // 带宽限制类型
 	Option              Option
-	Rw                  *comm.ReadWriter              // 网络缓冲
-	Slab                *slab.Slab                    // chunk内存分配器
-	Chunks              map[uint32]*chunk.ChunkStream // chunk接收
+	Rw                  *ReadWriter             // 网络缓冲
+	slab                *Slab                   // chunk内存分配器
+	Chunks              map[uint32]*ChunkStream // chunk接收
 	csID                uint32
 	rLocker             sync.Mutex
 	wLocker             sync.Mutex
@@ -66,25 +62,25 @@ type Conn struct {
 func NewConn(conn net.Conn, bufSize int) *Conn {
 	return &Conn{
 		Conn:                conn,
-		ChunkSize:           128,            // 起始值一定是128
-		RemoteChunkSize:     128,            // 起始值一定是128
-		WindowAckSize:       2500000,        // 默认本地确认窗口(字节)
-		RemoteWindowAckSize: 2500000,        // 默认远程确认窗口(字节)
-		bandwidthLimitType:  0,              // 带宽限制, 类型: Soft limit
-		Slab:                slab.NewSlab(), // 内存分配器
-		Rw:                  comm.NewReadWriter(conn, bufSize),
-		Chunks:              make(map[uint32]*chunk.ChunkStream),
+		ChunkSize:           128,       // 起始值一定是128
+		RemoteChunkSize:     128,       // 起始值一定是128
+		WindowAckSize:       2500000,   // 默认本地确认窗口(字节)
+		RemoteWindowAckSize: 2500000,   // 默认远程确认窗口(字节)
+		bandwidthLimitType:  0,         // 带宽限制, 类型: Soft limit
+		slab:                NewSlab(), // 内存分配器
+		Rw:                  NewReadWriter(conn, bufSize),
+		Chunks:              make(map[uint32]*ChunkStream),
 		Option:              DefaultOption,
 	}
 }
 
 // InitSlab 初始化内存管理器的阈值
 func (c *Conn) InitSlab(min, max int) {
-	c.Slab.Init(min, max)
+	c.slab.Init(min, max)
 }
 
 // Read 【读锁】读取一个完整chunk的数据
-func (c *Conn) Read(cs *chunk.ChunkStream) error {
+func (c *Conn) Read(cs *ChunkStream) error {
 	for {
 		c.rLocker.Lock()
 
@@ -109,7 +105,7 @@ func (c *Conn) Read(cs *chunk.ChunkStream) error {
 }
 
 // Write 【写锁】写入一个完整的chunk
-func (c *Conn) Write(cs *chunk.ChunkStream) error {
+func (c *Conn) Write(cs *ChunkStream) error {
 	if false {
 		// 监控发送的数据量，在客户端接收能力不足时应控制发送速率，直到客户端接收量恢复正常
 		ackSent := atomic.LoadUint32(&c.ackSent)
@@ -149,19 +145,19 @@ func (c *Conn) Flush() error {
 
 // Close 关闭connection时要执行的工作
 func (c *Conn) Close() error {
-	if c.Slab.Stat.Max > 0 || c.Slab.Stat.Medium > 0 || c.Slab.Stat.Min > 0 {
+	if c.slab.Stat.Max > 0 || c.slab.Stat.Medium > 0 || c.slab.Stat.Min > 0 {
 		slog.Debug("Connection is closed,slab stat",
 			"from", c.Conn.RemoteAddr(),
-			"max", c.Slab.Stat.Max,
-			"medium", c.Slab.Stat.Medium,
-			"min", c.Slab.Stat.Min,
+			"max", c.slab.Stat.Max,
+			"medium", c.slab.Stat.Medium,
+			"min", c.slab.Stat.Min,
 		)
 	}
 	return c.Conn.Close()
 }
 
 // 从网络缓冲中拼接chunk
-func (c *Conn) getIntactChunk() (*chunk.ChunkStream, error) {
+func (c *Conn) getIntactChunk() (*ChunkStream, error) {
 	var counter uint32
 
 	// 标记数据无效，加速GC回收
@@ -190,7 +186,7 @@ func (c *Conn) getIntactChunk() (*chunk.ChunkStream, error) {
 		// 潜在风险：无效的csID会有很多吗？可能chunks会变得很大
 		ncs, ok = c.Chunks[csID]
 		if !ok {
-			ncs = &chunk.ChunkStream{
+			ncs = &ChunkStream{
 				Csid: csID,
 			}
 			c.Chunks[csID] = ncs
@@ -200,7 +196,7 @@ func (c *Conn) getIntactChunk() (*chunk.ChunkStream, error) {
 		ncs.FormatTmp = format
 
 		// read chunk
-		err = ncs.ReadChunk(c.Rw, c.RemoteChunkSize, c.Slab)
+		err = ncs.ReadChunk(c.Rw, c.RemoteChunkSize, c.slab)
 		if err != nil {
 			return nil, err
 		}
@@ -218,7 +214,7 @@ func (c *Conn) getIntactChunk() (*chunk.ChunkStream, error) {
 	}
 }
 
-func (c *Conn) setChunkSize(cs *chunk.ChunkStream) {
+func (c *Conn) setChunkSize(cs *ChunkStream) {
 	remoteChunkSize := binary.BigEndian.Uint32(cs.Data)
 
 	// 第一位必须是0
@@ -243,7 +239,7 @@ func (c *Conn) setChunkSize(cs *chunk.ChunkStream) {
 	slog.Debug("remote chunk size is changed to", "size", remoteChunkSize)
 }
 
-func (c *Conn) setPeerBandwidth(cs *chunk.ChunkStream) {
+func (c *Conn) setPeerBandwidth(cs *ChunkStream) {
 	bandwidth := binary.BigEndian.Uint32(cs.Data)
 
 	// 通过将已发送但尚未被确认的数据总数限制为该消息指定的视窗大小, 来实现限制输出带宽的目的
@@ -270,12 +266,12 @@ func (c *Conn) setPeerBandwidth(cs *chunk.ChunkStream) {
 }
 
 // 处理控制消息
-func (c *Conn) handleControlMsg(cs *chunk.ChunkStream) bool {
+func (c *Conn) handleControlMsg(cs *ChunkStream) bool {
 	switch cs.TypeID {
-	case idSetChunkSize:
+	case IDSetChunkSize:
 		c.setChunkSize(cs)
 		return true
-	case idAbortMessage:
+	case IDAbortMessage:
 		streamID := binary.BigEndian.Uint32(cs.Data)
 
 		/**
@@ -284,17 +280,17 @@ func (c *Conn) handleControlMsg(cs *chunk.ChunkStream) bool {
 		*/
 		slog.Error("ignore unrealize abort message", "stream id", streamID)
 		return true
-	case idAck:
+	case IDAck:
 		atomic.StoreUint32(&c.ackSent, binary.BigEndian.Uint32(cs.Data))
 		return true
-	case idUser:
+	case IDUser:
 		c.handleUserMsg(cs)
 		return true
-	case idWindowAckSize:
+	case IDWindowAckSize:
 		// 客户端或服务端发送该消息来通知对端发送确认消息所使用的视窗大小
 		c.RemoteWindowAckSize = binary.BigEndian.Uint32(cs.Data)
 		return true
-	case idSetPeerBandwidth:
+	case IDSetPeerBandwidth:
 		c.setPeerBandwidth(cs)
 		return true
 	default:
@@ -303,10 +299,10 @@ func (c *Conn) handleControlMsg(cs *chunk.ChunkStream) bool {
 }
 
 // 处理用户消息
-func (c *Conn) handleUserMsg(cs *chunk.ChunkStream) {
+func (c *Conn) handleUserMsg(cs *ChunkStream) {
 	eventType := binary.BigEndian.Uint16(cs.Data)
 	switch eventType {
-	case setBufferLen:
+	case StreamSetBufferLen:
 		// 事件数据的前4字节表示流ID,接下来的4字节表示缓冲区的大小(单位是毫秒)
 		if len(cs.Data) != 10 {
 			slog.Debug("setBufferLen command data != 10", "data", len(cs.Data))
@@ -321,7 +317,7 @@ func (c *Conn) handleUserMsg(cs *chunk.ChunkStream) {
 			"streamID", streamID,
 			"bufferLen", bufferLen,
 		)
-	case pingResponse:
+	case PingResponse:
 		// 事件数据是客户端接收到pingRequest请求时的4字节时间戳
 		if len(cs.Data) != 6 {
 			slog.Error("pingResponse command data != 6", "data", len(cs.Data))
@@ -343,8 +339,7 @@ func (c *Conn) ack(received uint32) {
 	// 已接收但未确认的数据总数
 	c.ackReceived += received
 	if c.ackReceived >= c.RemoteWindowAckSize {
-		cs := c.NewAck(c.ackReceived)
-
+		cs := NewAck(c.ackReceived)
 		err := c.Write(cs)
 		if err != nil {
 			slog.Error(err.Error())

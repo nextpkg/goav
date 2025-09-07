@@ -1,4 +1,4 @@
-package slab
+package chunk
 
 import (
 	"testing"

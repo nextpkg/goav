@@ -1,4 +1,4 @@
-package slab
+package chunk
 
 const maxAllocSize = 256 * 1024
 const minAllocSize = maxAllocSize / 4

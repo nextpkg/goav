@@ -1,4 +1,4 @@
-package message
+package chunk
 
 import (
 	"bytes"
@@ -6,9 +6,6 @@ import (
 	"net"
 	"testing"
 
-	"github.com/nextpkg/goav/rtmp/chunk"
-	"github.com/nextpkg/goav/rtmp/comm"
-	"github.com/nextpkg/goav/rtmp/slab"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,16 +30,16 @@ func TestReadNormal(t *testing.T) {
 	data = append(data, data2...)
 
 	conn := &Conn{
-		Slab:                slab.NewSlab(),
-		Rw:                  comm.NewReadWriter(bytes.NewBuffer(data), 1024),
+		slab:                NewSlab(),
+		Rw:                  NewReadWriter(bytes.NewBuffer(data), 1024),
 		RemoteChunkSize:     128,
 		WindowAckSize:       2500000,
 		RemoteWindowAckSize: 2500000,
 		Option:              DefaultOption,
-		Chunks:              make(map[uint32]*chunk.ChunkStream),
+		Chunks:              make(map[uint32]*ChunkStream),
 	}
 
-	var cs chunk.ChunkStream
+	var cs ChunkStream
 	err := conn.Read(&cs)
 	at.Equal(nil, err)
 	at.Equal(6, int(cs.Csid))
@@ -85,17 +82,17 @@ func TestCrossReading(t *testing.T) {
 	videoData = append(videoData, data2...)
 
 	conn := &Conn{
-		Slab:                slab.NewSlab(),
-		Rw:                  comm.NewReadWriter(bytes.NewBuffer(videoData), 1024),
+		slab:                NewSlab(),
+		Rw:                  NewReadWriter(bytes.NewBuffer(videoData), 1024),
 		RemoteChunkSize:     128,
 		WindowAckSize:       2500000,
 		RemoteWindowAckSize: 2500000,
-		Chunks:              make(map[uint32]*chunk.ChunkStream),
+		Chunks:              make(map[uint32]*ChunkStream),
 		Option:              DefaultOption,
 	}
 
 	// video 1
-	var cs chunk.ChunkStream
+	var cs ChunkStream
 	err := conn.Read(&cs)
 	at.Nil(err)
 	at.Equal(307, int(cs.Length))
@@ -119,20 +116,20 @@ func TestSetChunksizeForWrite(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	conn := &Conn{
 		Conn:                i,
-		Slab:                slab.NewSlab(),
-		Rw:                  comm.NewReadWriter(buf, 1024),
+		slab:                NewSlab(),
+		Rw:                  NewReadWriter(buf, 1024),
 		ChunkSize:           128,
 		RemoteChunkSize:     128,
 		WindowAckSize:       2500000,
 		RemoteWindowAckSize: 2500000,
-		Chunks:              make(map[uint32]*chunk.ChunkStream),
+		Chunks:              make(map[uint32]*ChunkStream),
 		Option:              DefaultOption,
 	}
 
 	// 共146字节
 	// chunk0:12字节+128字节=140字节
 	// chunk3:1字节+5字节=6字节
-	audioChunk := chunk.ChunkStream{
+	audioChunk := ChunkStream{
 		Format:    0,
 		Csid:      4,
 		Timestamp: 40,
@@ -150,13 +147,13 @@ func TestSetChunksizeForWrite(t *testing.T) {
 
 	// 设置chunk size
 	buf.Reset()
-	commandChunk := chunk.ChunkStream{
+	commandChunk := ChunkStream{
 		Format:    0,
 		Csid:      2,
 		Timestamp: 0,
 		Length:    4,
 		StreamID:  1,
-		TypeID:    idSetChunkSize,
+		TypeID:    IDSetChunkSize,
 		Data:      []byte{0x00, 0x00, 0x00, 0x96},
 	}
 	err = conn.Write(&commandChunk)
@@ -193,17 +190,17 @@ func TestSetChunksize(t *testing.T) {
 
 	rw := bytes.NewBuffer(data)
 	conn := &Conn{
-		Slab:                slab.NewSlab(),
-		Rw:                  comm.NewReadWriter(rw, 1024),
+		slab:                NewSlab(),
+		Rw:                  NewReadWriter(rw, 1024),
 		ChunkSize:           128,
 		RemoteChunkSize:     128,
 		WindowAckSize:       2500000,
 		RemoteWindowAckSize: 2500000,
-		Chunks:              make(map[uint32]*chunk.ChunkStream),
+		Chunks:              make(map[uint32]*ChunkStream),
 		Option:              DefaultOption,
 	}
 
-	cs := &chunk.ChunkStream{}
+	cs := &ChunkStream{}
 	err := conn.Read(cs)
 	at.Nil(err)
 	at.Equal(6, int(cs.Csid))
@@ -245,7 +242,7 @@ func TestSetChunksize(t *testing.T) {
 	at.Nil(err)
 	at.Equal(321, n)
 
-	cs = &chunk.ChunkStream{}
+	cs = &ChunkStream{}
 	err = conn.Read(cs)
 	at.Equal(nil, err)
 	at.Equal(6, int(cs.Csid))
@@ -266,17 +263,17 @@ func TestWrite(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	conn := &Conn{
 		Conn:                i,
-		Slab:                slab.NewSlab(),
-		Rw:                  comm.NewReadWriter(buf, 128),
+		slab:                NewSlab(),
+		Rw:                  NewReadWriter(buf, 128),
 		ChunkSize:           128,
 		RemoteChunkSize:     128,
 		WindowAckSize:       2500000,
 		RemoteWindowAckSize: 2500000,
-		Chunks:              make(map[uint32]*chunk.ChunkStream),
+		Chunks:              make(map[uint32]*ChunkStream),
 	}
 
 	// 音频消息
-	audioChunk := chunk.ChunkStream{
+	audioChunk := ChunkStream{
 		Csid:      3,
 		Timestamp: 40,
 		Length:    3,
@@ -295,7 +292,7 @@ func TestWrite(t *testing.T) {
 
 	// 改变时间戳和数据长度
 	buf.Reset()
-	audioChunk = chunk.ChunkStream{
+	audioChunk = ChunkStream{
 		Csid:      3,
 		Timestamp: 80,
 		Length:    4,
@@ -330,12 +327,12 @@ func TestHandleControlMsg(t *testing.T) {
 	at := assert.New(t)
 
 	conn := &Conn{}
-	cs := conn.NewSetPeerBandwidth(1024)
+	cs := NewSetPeerBandwidth(1024)
 
 	at.True(conn.handleControlMsg(cs))
 	at.Equal(uint32(1024), conn.ackReceived)
 
-	cs = conn.NewSetChunkSize(4096)
+	cs = NewSetChunkSize(4096)
 	at.True(conn.handleControlMsg(cs))
 	at.Equal(uint32(4096), conn.RemoteChunkSize)
 }

@@ -8,8 +8,6 @@ import (
 
 	"github.com/nextpkg/goav/amf"
 	"github.com/nextpkg/goav/packet"
-	"github.com/nextpkg/goav/rtmp/comm"
-	"github.com/nextpkg/goav/rtmp/slab"
 	"github.com/pkg/errors"
 )
 
@@ -36,7 +34,7 @@ func (cs *ChunkStream) Intact() bool {
 }
 
 // 新建一个chunk data
-func (cs *ChunkStream) newChunkData(slab *slab.Slab) error {
+func (cs *ChunkStream) newChunkData(slab *Slab) error {
 	if cs.Length == 0 {
 		return errors.New("chunk length==0")
 	}
@@ -53,7 +51,7 @@ func (cs *ChunkStream) newChunkData(slab *slab.Slab) error {
 	return nil
 }
 
-func (cs *ChunkStream) fillCSID(r *comm.ReadWriter) error {
+func (cs *ChunkStream) fillCSID(r *ReadWriter) error {
 	// 补全CSID
 	switch cs.Csid {
 	case 0:
@@ -77,7 +75,7 @@ func (cs *ChunkStream) fillCSID(r *comm.ReadWriter) error {
 	return nil
 }
 
-func (cs *ChunkStream) handleFmt0(r *comm.ReadWriter, slab *slab.Slab) error {
+func (cs *ChunkStream) handleFmt0(r *ReadWriter, slab *Slab) error {
 	var err error
 
 	// Basic Header
@@ -129,7 +127,7 @@ func (cs *ChunkStream) handleFmt0(r *comm.ReadWriter, slab *slab.Slab) error {
 	return nil
 }
 
-func (cs *ChunkStream) handleFmt1(r *comm.ReadWriter, slab *slab.Slab) error {
+func (cs *ChunkStream) handleFmt1(r *ReadWriter, slab *Slab) error {
 	var err error
 
 	// Basic Header
@@ -176,7 +174,7 @@ func (cs *ChunkStream) handleFmt1(r *comm.ReadWriter, slab *slab.Slab) error {
 	return nil
 }
 
-func (cs *ChunkStream) handleFmt2(r *comm.ReadWriter, slab *slab.Slab) error {
+func (cs *ChunkStream) handleFmt2(r *ReadWriter, slab *Slab) error {
 	var err error
 
 	// Basic Header
@@ -211,7 +209,7 @@ func (cs *ChunkStream) handleFmt2(r *comm.ReadWriter, slab *slab.Slab) error {
 	return nil
 }
 
-func (cs *ChunkStream) handleFmt3(r *comm.ReadWriter, slab *slab.Slab) error {
+func (cs *ChunkStream) handleFmt3(r *ReadWriter, slab *Slab) error {
 	var err error
 
 	if cs.remain == 0 {
@@ -272,7 +270,7 @@ func (cs *ChunkStream) handleFmt3(r *comm.ReadWriter, slab *slab.Slab) error {
 }
 
 // ReadChunk 读取一个chunk(由于chunkSize的限制, 可能需要读取多次才能读取完)
-func (cs *ChunkStream) ReadChunk(r *comm.ReadWriter, chunkSize uint32, slab *slab.Slab) error {
+func (cs *ChunkStream) ReadChunk(r *ReadWriter, chunkSize uint32, slab *Slab) error {
 	if chunkSize <= 0 {
 		return errors.New("chunk size<=0")
 	}
@@ -333,7 +331,7 @@ func (cs *ChunkStream) ReadChunk(r *comm.ReadWriter, chunkSize uint32, slab *sla
 }
 
 // Chunk Basic Header
-func (cs *ChunkStream) writeChunkBasicHeader(w *comm.ReadWriter) error {
+func (cs *ChunkStream) writeChunkBasicHeader(w *ReadWriter) error {
 	h := cs.Format << 6
 
 	switch {
@@ -373,7 +371,7 @@ func (cs *ChunkStream) writeChunkBasicHeader(w *comm.ReadWriter) error {
 }
 
 // 根据chunkStream的信息, 构造chunk header并写入到w中
-func (cs *ChunkStream) writeHeader(w *comm.ReadWriter) error {
+func (cs *ChunkStream) writeHeader(w *ReadWriter) error {
 	// Chunk Basic Header
 	err := cs.writeChunkBasicHeader(w)
 	if err != nil {
@@ -439,7 +437,7 @@ END:
 }
 
 // WriteChunk 构造chunk, 将chunk写入缓存中，chunk-0后面跟着chunk-3。chunkSize: 每个chunk除header外的最大负载
-func (cs *ChunkStream) WriteChunk(w *comm.ReadWriter, chunkSize uint32) error {
+func (cs *ChunkStream) WriteChunk(w *ReadWriter, chunkSize uint32) error {
 	if chunkSize <= 0 {
 		return errors.New("chunk size<=0")
 	}

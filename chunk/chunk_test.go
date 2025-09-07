@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/nextpkg/goav/rtmp/comm"
-	"github.com/nextpkg/goav/rtmp/slab"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,7 +26,7 @@ func TestChunkRead(t *testing.T) {
 	data = append(data, 0xc6)
 	data = append(data, data2...)
 
-	rw := comm.NewReadWriter(bytes.NewBuffer(data), 1024)
+	rw := NewReadWriter(bytes.NewBuffer(data), 1024)
 	cs := &ChunkStream{}
 
 	for {
@@ -36,7 +34,7 @@ func TestChunkRead(t *testing.T) {
 		cs.FormatTmp = basicHeader >> 6
 		cs.Csid = basicHeader & 0x3f
 
-		err := cs.ReadChunk(rw, 128, slab.NewSlab())
+		err := cs.ReadChunk(rw, 128, NewSlab())
 		at.Nil(err)
 
 		if cs.remain == 0 {
@@ -69,14 +67,14 @@ func TestChunkRead(t *testing.T) {
 	data = append(data, 0xc6)
 	data = append(data, data2...)
 
-	rw = comm.NewReadWriter(bytes.NewBuffer(data), 1024)
+	rw = NewReadWriter(bytes.NewBuffer(data), 1024)
 	cs = &ChunkStream{}
 
 	for i := 0; i < 3; i++ {
 		basicHeader, _ := rw.ReadUintBE(1)
 		cs.FormatTmp = basicHeader >> 6
 		cs.Csid = basicHeader & 0x3f
-		err := cs.ReadChunk(rw, 128, slab.NewSlab())
+		err := cs.ReadChunk(rw, 128, NewSlab())
 		at.Nil(err)
 	}
 	at.Equal(307, int(cs.Length))
@@ -99,7 +97,7 @@ func TestChunkWrite(t *testing.T) {
 	cs.Data = make([]byte, 307)
 
 	buf := bytes.NewBuffer(nil)
-	w := comm.NewReadWriter(buf, 1024)
+	w := NewReadWriter(buf, 1024)
 
 	err := cs.WriteChunk(w, 128)
 	at.Equal(nil, err)
