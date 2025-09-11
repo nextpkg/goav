@@ -2,9 +2,8 @@
 package server
 
 import (
-	"github.com/nextpkg/goav/rtmp/chunk"
+	"github.com/nextpkg/goav/chunk"
 	"github.com/nextpkg/goav/rtmp/comm"
-	"github.com/nextpkg/goav/rtmp/message"
 	"github.com/pkg/errors"
 )
 
@@ -15,16 +14,16 @@ type ConnServer struct {
 	duration      int    // 流的长度，直播=0，点播>0，单位：毫秒
 	StreamID      uint32
 	transactionID uint32
-	Conn          *message.Conn
+	Conn          *chunk.Conn
 	connect       comm.ConnectInfo
 	publish       comm.PublishInfo
 }
 
 // NewConnServer RTMP服务端
-func NewConnServer(conn *message.Conn, chunkSize uint32) *ConnServer {
+func NewConnServer(conn *chunk.Conn, chunkSize uint32) *ConnServer {
 	// 针对server调整默认的chunkSize
-	conn.ChunkSize = chunkSize
-	if conn.ChunkSize < 128 {
+	conn.SetChunkSize(chunkSize)
+	if conn.GetChunkSize() < 128 {
 		panic("chunk size < 128")
 	}
 

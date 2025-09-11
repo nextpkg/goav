@@ -7,7 +7,7 @@ import (
 
 	"github.com/nextpkg/goav/container/flv"
 	"github.com/nextpkg/goav/packet"
-	"github.com/nextpkg/goav/rtmp/chunk"
+	"github.com/nextpkg/goav/chunk"
 	"github.com/nextpkg/goav/rtmp/comm"
 	"github.com/nextpkg/goav/rtmp/funnel"
 	"github.com/pkg/errors"

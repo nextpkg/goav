@@ -5,11 +5,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/nextpkg/goav/rtmp/chunk"
+	"github.com/nextpkg/goav/chunk"
 	"github.com/nextpkg/goav/rtmp/comm"
-	"github.com/nextpkg/goav/rtmp/message"
 	"github.com/nextpkg/goav/rtmp/server"
-	"github.com/nextpkg/goav/rtmp/slab"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,33 +17,10 @@ func TestCommandLinkup(t *testing.T) {
 	i, o := net.Pipe()
 
 	client := &ConnClient{
-		Conn: &message.Conn{
-			Conn:                o,
-			Rw:                  comm.NewReadWriter(o, 1024),
-			Slab:                slab.NewSlab(),
-			ChunkSize:           128,
-			RemoteChunkSize:     128,
-			WindowAckSize:       2500000,
-			RemoteWindowAckSize: 2500000,
-			Chunks:              make(map[uint32]*chunk.ChunkStream),
-			Option:              message.DefaultOption,
-		},
+		Conn:          chunk.NewConn(o, chunk.DefaultOption),
 		TransactionID: 0,
 	}
-	server := &server.ConnServer{
-		StreamID: 1,
-		Conn: &message.Conn{
-			Conn:                i,
-			Rw:                  comm.NewReadWriter(i, 1024),
-			Slab:                slab.NewSlab(),
-			ChunkSize:           128,
-			RemoteChunkSize:     128,
-			WindowAckSize:       2500000,
-			RemoteWindowAckSize: 2500000,
-			Chunks:              make(map[uint32]*chunk.ChunkStream),
-			Option:              message.DefaultOption,
-		},
-	}
+	server := server.NewConnServer(chunk.NewConn(i, chunk.DefaultOption), 128)
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -102,33 +77,10 @@ func TestNewConnClient(t *testing.T) {
 	i, o := net.Pipe()
 
 	client := &ConnClient{
-		Conn: &message.Conn{
-			Conn:                o,
-			Rw:                  comm.NewReadWriter(o, 1024),
-			Slab:                slab.NewSlab(),
-			ChunkSize:           128,
-			RemoteChunkSize:     128,
-			WindowAckSize:       2500000,
-			RemoteWindowAckSize: 2500000,
-			Chunks:              make(map[uint32]*chunk.ChunkStream),
-			Option:              message.DefaultOption,
-		},
+		Conn:          chunk.NewConn(o, chunk.DefaultOption),
 		TransactionID: 0,
 	}
-	server := &server.ConnServer{
-		StreamID: 1,
-		Conn: &message.Conn{
-			Conn:                i,
-			Rw:                  comm.NewReadWriter(i, 1024),
-			Slab:                slab.NewSlab(),
-			ChunkSize:           128,
-			RemoteChunkSize:     128,
-			WindowAckSize:       2500000,
-			RemoteWindowAckSize: 2500000,
-			Chunks:              make(map[uint32]*chunk.ChunkStream),
-			Option:              message.DefaultOption,
-		},
-	}
+	server := server.NewConnServer(chunk.NewConn(i, chunk.DefaultOption), 128)
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)

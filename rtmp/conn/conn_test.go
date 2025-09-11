@@ -7,12 +7,8 @@ import (
 	"time"
 
 	"github.com/nextpkg/goav/packet"
-	"github.com/nextpkg/goav/rtmp/chunk"
-	"github.com/nextpkg/goav/rtmp/client"
+	"github.com/nextpkg/goav/chunk"
 	"github.com/nextpkg/goav/rtmp/comm"
-	"github.com/nextpkg/goav/rtmp/message"
-	"github.com/nextpkg/goav/rtmp/server"
-	"github.com/nextpkg/goav/rtmp/slab"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -77,26 +73,48 @@ var avcIFrame = []byte{
 	0x0, 0x0, 0x3, 0x0, 0x0, 0x40, 0x41,
 }
 
+// mockWriter implements the Writer interface for testing
+type mockWriter struct {
+	conn *chunk.Conn
+}
+
+func (m *mockWriter) Read(cs *chunk.ChunkStream) error {
+	return m.conn.Read(cs)
+}
+
+func (m *mockWriter) Write(cs *chunk.ChunkStream) error {
+	return m.conn.Write(cs)
+}
+
+func (m *mockWriter) Flush() error {
+	return m.conn.Flush()
+}
+
+func (m *mockWriter) Close() error {
+	return m.conn.Close()
+}
+
+func (m *mockWriter) GetInfo() (app, instance string) {
+	return "test_app", "test_instance"
+}
+
+func (m *mockWriter) GetPublish() *comm.PublishInfo {
+	return &comm.PublishInfo{}
+}
+
+func (m *mockWriter) GetConnect() *comm.ConnectInfo {
+	return &comm.ConnectInfo{}
+}
+
 func TestWriter_Write(t *testing.T) {
 	at := assert.New(t)
 
 	i, o := net.Pipe()
-	client := &client.ConnClient{
-		Conn: &message.Conn{
-			Conn:                i,
-			Rw:                  comm.NewReadWriter(i, 1024),
-			Slab:                slab.NewSlab(),
-			ChunkSize:           128,
-			RemoteChunkSize:     128,
-			WindowAckSize:       2500000,
-			RemoteWindowAckSize: 2500000,
-			Chunks:              make(map[uint32]*chunk.ChunkStream),
-			Option:              message.DefaultOption,
-		},
-		TransactionID: 0,
+	mockConn := &mockWriter{
+		conn: chunk.NewConn(i, chunk.DefaultOption),
 	}
 
-	w := NewWriter(client)
+	w := NewWriter(mockConn)
 
 	// 视频数据
 	p := &packet.Packet{
@@ -118,7 +136,7 @@ func TestWriter_Write(t *testing.T) {
 
 	go func() {
 		time.Sleep(50 * time.Millisecond)
-		at.Nil(client.Conn.Flush())
+		at.Nil(mockConn.Flush())
 	}()
 
 	buf := make([]byte, 1024)
@@ -127,23 +145,47 @@ func TestWriter_Write(t *testing.T) {
 	at.Equal(461, n)
 }
 
+// mockReader implements the Reader interface for testing
+type mockReader struct {
+	conn     *chunk.Conn
+	streamID uint32
+}
+
+func (m *mockReader) Read(cs *chunk.ChunkStream) error {
+	return m.conn.Read(cs)
+}
+
+func (m *mockReader) Write(cs *chunk.ChunkStream) error {
+	return m.conn.Write(cs)
+}
+
+func (m *mockReader) Flush() error {
+	return m.conn.Flush()
+}
+
+func (m *mockReader) Close() error {
+	return m.conn.Close()
+}
+
+func (m *mockReader) GetInfo() (app, instance string) {
+	return "test_app", "test_instance"
+}
+
+func (m *mockReader) GetPublish() *comm.PublishInfo {
+	return &comm.PublishInfo{}
+}
+
+func (m *mockReader) GetConnect() *comm.ConnectInfo {
+	return &comm.ConnectInfo{}
+}
+
 func TestReader_Read(t *testing.T) {
 	at := assert.New(t)
 
 	i, o := net.Pipe()
-	server := &server.ConnServer{
-		StreamID: 1,
-		Conn: &message.Conn{
-			Conn:                i,
-			Rw:                  comm.NewReadWriter(i, 1024),
-			Slab:                slab.NewSlab(),
-			ChunkSize:           128,
-			RemoteChunkSize:     128,
-			WindowAckSize:       2500000,
-			RemoteWindowAckSize: 2500000,
-			Chunks:              make(map[uint32]*chunk.ChunkStream),
-			Option:              message.DefaultOption,
-		},
+	mockConn := &mockReader{
+		conn:     chunk.NewConn(i, chunk.DefaultOption),
+		streamID: 1,
 	}
 
 	cs := &chunk.ChunkStream{
@@ -152,10 +194,10 @@ func TestReader_Read(t *testing.T) {
 		TypeID:   9,
 		Data:     flvIFrame,
 	}
-	at.Nil(server.Write(cs))
+	at.Nil(mockConn.Write(cs))
 
 	go func() {
-		at.Nil(server.Conn.Flush())
+		at.Nil(mockConn.Flush())
 	}()
 
 	buf := make([]byte, 1024)
@@ -174,7 +216,7 @@ func TestReader_Read(t *testing.T) {
 		at.Equal(233, n)
 	}()
 
-	r := NewReader(server)
+	r := NewReader(mockConn)
 	p := &packet.Packet{}
 	at.Nil(r.Read(p))
 

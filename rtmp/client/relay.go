@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/nextpkg/goav/rtmp/chunk"
+	"github.com/nextpkg/goav/chunk"
 	"github.com/nextpkg/goav/rtmp/control"
 	"github.com/pkg/errors"
 )

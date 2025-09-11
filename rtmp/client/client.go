@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/nextpkg/goav/amf"
-	"github.com/nextpkg/goav/rtmp/ce"
-	"github.com/nextpkg/goav/rtmp/chunk"
+	"github.com/nextpkg/goav/chunk"
+	"github.com/nextpkg/goav/rtmp"
 	"github.com/nextpkg/goav/rtmp/comm"
-	"github.com/nextpkg/goav/rtmp/message"
+	"github.com/nextpkg/goav/rtmp/protocol"
 	"github.com/pkg/errors"
 )
 
@@ -26,7 +26,7 @@ type ConnClient struct {
 	publish       comm.PublishInfo // 客户端参数
 	current       string           // 通信：客户端正在执行的指令名称
 	streamID      uint32           // 通信：客户端获得的流的ID
-	Conn          *message.Conn    // 通信：RTMP服务
+	Conn          *chunk.Conn      // 通信：RTMP服务
 	TransactionID int              // 通信：事务ID
 }
 
@@ -56,14 +56,14 @@ func NewConnClientByURL(rtmpURL string, rtmpDialTimeout time.Duration) *ConnClie
 		return nil
 	}
 
-	c := message.NewConn(conn, ConnBufSize)
+	c := chunk.NewConn(conn, chunk.DefaultOption)
 
 	// RTMP服务
 	return NewConnClient(ps[0], ps[1], c)
 }
 
 // NewConnClient RTMP客户端
-func NewConnClient(app, instance string, conn *message.Conn) *ConnClient {
+func NewConnClient(app, instance string, conn *chunk.Conn) *ConnClient {
 	return &ConnClient{
 		Conn: conn,
 		connect: comm.ConnectInfo{
@@ -126,7 +126,7 @@ func (c *ConnClient) Flush() error {
 // Start 发起一个RTMP连接到服务端
 func (c *ConnClient) Start(method string) error {
 	// 1. 握手
-	err := c.Conn.HandshakeClient()
+	err := protocol.HandshakeClient(c.Conn)
 	if err != nil {
 		return errors.Wrap(err, "client handshake to server")
 	}
@@ -182,7 +182,7 @@ func (c *ConnClient) Connect() error {
 	event["tcUrl"] = c.connect.TcURL
 
 	// ready to request
-	slog.Debug("Connect chunk size before sending", "size", c.Conn.ChunkSize)
+	slog.Debug("Connect chunk size before sending", "size", c.Conn.GetChunkSize())
 
 	err := c.sendCmdMsg(comm.Connect, c.TransactionID, event)
 	if err != nil {
@@ -196,7 +196,7 @@ func (c *ConnClient) Connect() error {
 			c.TransactionID, c.connect.App, c.connect.TcURL)
 	}
 
-	slog.Debug("Connect chunk size after sending", "size", c.Conn.ChunkSize)
+	slog.Debug("Connect chunk size after sending", "size", c.Conn.GetChunkSize())
 
 	return nil
 }
@@ -269,7 +269,7 @@ func (c *ConnClient) strCmd(v interface{}) error {
 		}
 	case comm.Publish:
 		if str != comm.OnStatus {
-			return ce.ErrRespFailed
+			return rtmp.ErrRespFailed
 		}
 	}
 
@@ -284,14 +284,14 @@ func (c *ConnClient) intCmd(k int, v interface{}) error {
 		switch k {
 		case 1:
 			if c.TransactionID != id {
-				return ce.ErrRespFailed
+				return rtmp.ErrRespFailed
 			}
 		case 3:
 			c.streamID = uint32(id)
 		}
 	case comm.Publish:
 		if id != 0 {
-			return ce.ErrRespFailed
+			return rtmp.ErrRespFailed
 		}
 	}
 
@@ -314,18 +314,18 @@ func (c *ConnClient) objCmd(v interface{}) error {
 		if ok {
 			str := code.(string)
 			if str != comm.CodeConnectSuccess {
-				return ce.ErrRespFailed
+				return rtmp.ErrRespFailed
 			}
 
 			return nil
 		}
 
-		return ce.ErrRespFailed
+		return rtmp.ErrRespFailed
 	case comm.Publish:
 		// event
 		code, ok := property["code"]
 		if !ok {
-			return ce.ErrRespFailed
+			return rtmp.ErrRespFailed
 		}
 
 		str := code.(string)

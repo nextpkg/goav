@@ -1,4 +1,4 @@
-package ce
+package rtmp
 
 import "errors"
 

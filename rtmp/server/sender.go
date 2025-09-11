@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	"github.com/nextpkg/goav/amf"
-	"github.com/nextpkg/goav/rtmp/chunk"
+	"github.com/nextpkg/goav/chunk"
 	"github.com/pkg/errors"
 )
 

@@ -1,5 +1,23 @@
-// Package chunk 读写rtmp分块数据
-// 协议参考: https://chenlichao.gitbooks.io/rtmp-zh_cn/content/
+// Package chunk implements RTMP chunk stream reading and writing functionality.
+//
+// This package provides the core chunk stream implementation for RTMP protocol,
+// including chunk stream parsing, message assembly, and connection management.
+//
+// Key components:
+//   - Conn: Main connection type that handles chunk stream I/O
+//   - ChunkStream: Represents a single chunk stream with metadata
+//   - Interfaces: Unified interfaces for extensibility and testing
+//
+// Example usage:
+//
+//	conn := chunk.NewConn(netConn, chunk.DefaultOption)
+//	cs := &chunk.ChunkStream{}
+//	err := conn.Read(cs)
+//	if err != nil {
+//		// handle error
+//	}
+//
+// The package follows Go best practices with private fields and public getter/setter methods.
 package chunk
 
 import (

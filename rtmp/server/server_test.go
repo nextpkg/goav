@@ -7,10 +7,8 @@ import (
 	"testing"
 
 	"github.com/nextpkg/goav/amf"
-	"github.com/nextpkg/goav/rtmp/chunk"
+	"github.com/nextpkg/goav/chunk"
 	"github.com/nextpkg/goav/rtmp/comm"
-	"github.com/nextpkg/goav/rtmp/message"
-	"github.com/nextpkg/goav/rtmp/slab"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,20 +17,7 @@ func TestSendMsg(t *testing.T) {
 
 	i, o := net.Pipe()
 
-	server := &ConnServer{
-		StreamID: 1,
-		Conn: &message.Conn{
-			Conn:                i,
-			Rw:                  comm.NewReadWriter(i, 1024),
-			Slab:                slab.NewSlab(),
-			ChunkSize:           128,
-			RemoteChunkSize:     128,
-			WindowAckSize:       2500000,
-			RemoteWindowAckSize: 2500000,
-			Chunks:              make(map[uint32]*chunk.ChunkStream),
-			Option:              message.DefaultOption,
-		},
-	}
+	server := NewConnServer(chunk.NewConn(i, chunk.DefaultOption), 128)
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -68,18 +53,7 @@ func TestSendMsg(t *testing.T) {
 func TestPlay(t *testing.T) {
 	at := assert.New(t)
 
-	server := &ConnServer{
-		StreamID: 1,
-		Conn: &message.Conn{
-			Slab:                slab.NewSlab(),
-			ChunkSize:           128,
-			RemoteChunkSize:     128,
-			WindowAckSize:       2500000,
-			RemoteWindowAckSize: 2500000,
-			Chunks:              make(map[uint32]*chunk.ChunkStream),
-			Option:              message.DefaultOption,
-		},
-	}
+	server := NewConnServer(chunk.NewConn(nil, chunk.DefaultOption), 128)
 
 	// play
 	at.Nil(server.handlePlay([]interface{}{float64(123), "app"}))
@@ -90,18 +64,7 @@ func TestPlay(t *testing.T) {
 func TestPublish(t *testing.T) {
 	at := assert.New(t)
 
-	server := &ConnServer{
-		StreamID: 1,
-		Conn: &message.Conn{
-			Slab:                slab.NewSlab(),
-			ChunkSize:           128,
-			RemoteChunkSize:     128,
-			WindowAckSize:       2500000,
-			RemoteWindowAckSize: 2500000,
-			Chunks:              make(map[uint32]*chunk.ChunkStream),
-			Option:              message.DefaultOption,
-		},
-	}
+	server := NewConnServer(chunk.NewConn(nil, chunk.DefaultOption), 128)
 
 	// publish
 	at.Nil(server.handlePublish([]interface{}{float64(123), " ", "app", "live"}))
@@ -113,18 +76,7 @@ func TestPublish(t *testing.T) {
 func TestCreateStream(t *testing.T) {
 	at := assert.New(t)
 
-	server := &ConnServer{
-		StreamID: 1,
-		Conn: &message.Conn{
-			Slab:                slab.NewSlab(),
-			ChunkSize:           128,
-			RemoteChunkSize:     128,
-			WindowAckSize:       2500000,
-			RemoteWindowAckSize: 2500000,
-			Chunks:              make(map[uint32]*chunk.ChunkStream),
-			Option:              message.DefaultOption,
-		},
-	}
+	server := NewConnServer(chunk.NewConn(nil, chunk.DefaultOption), 128)
 
 	// createStream
 	at.Nil(server.handleCreateStream([]interface{}{float64(123)}))
@@ -134,18 +86,7 @@ func TestCreateStream(t *testing.T) {
 func TestConnect(t *testing.T) {
 	at := assert.New(t)
 
-	server := &ConnServer{
-		StreamID: 1,
-		Conn: &message.Conn{
-			Slab:                slab.NewSlab(),
-			ChunkSize:           128,
-			RemoteChunkSize:     128,
-			WindowAckSize:       2500000,
-			RemoteWindowAckSize: 2500000,
-			Chunks:              make(map[uint32]*chunk.ChunkStream),
-			Option:              message.DefaultOption,
-		},
-	}
+	server := NewConnServer(chunk.NewConn(nil, chunk.DefaultOption), 128)
 
 	// connect
 	at.NotNil(server.handleConnect([]interface{}{float64(123)}))
@@ -179,18 +120,7 @@ func TestConnect(t *testing.T) {
 func TestHandleDataMsg(t *testing.T) {
 	at := assert.New(t)
 
-	server := &ConnServer{
-		StreamID: 1,
-		Conn: &message.Conn{
-			Slab:                slab.NewSlab(),
-			ChunkSize:           128,
-			RemoteChunkSize:     128,
-			WindowAckSize:       2500000,
-			RemoteWindowAckSize: 2500000,
-			Chunks:              make(map[uint32]*chunk.ChunkStream),
-			Option:              message.DefaultOption,
-		},
-	}
+	server := NewConnServer(chunk.NewConn(nil, chunk.DefaultOption), 128)
 
 	at.Nil(server.handleDataMsg(&chunk.ChunkStream{}))
 

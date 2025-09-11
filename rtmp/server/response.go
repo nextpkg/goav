@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/nextpkg/goav/amf"
-	"github.com/nextpkg/goav/rtmp/chunk"
+	"github.com/nextpkg/goav/chunk"
 	"github.com/nextpkg/goav/rtmp/comm"
 	"github.com/pkg/errors"
 )
@@ -39,14 +39,16 @@ func (s *ConnServer) RespPublish(cs *chunk.ChunkStream) error {
 	return s.sendCmdMsg(cs.Csid, cs.StreamID, comm.OnStatus, transactionID, nil, event)
 }
 
-// RespPlay 服务端响应客户端的play请求
+// RespPlay responds to client's play request according to RTMP protocol
 func (s *ConnServer) RespPlay(cs *chunk.ChunkStream) error {
-	err := s.Conn.SetBegin(1)
+	// Send Stream Begin control message first (RTMP protocol requirement)
+	beginMsg := chunk.SetBegin(cs.StreamID)
+	err := s.Conn.Write(beginMsg)
 	if err != nil {
-		return errors.Wrap(err, "set begin failed")
+		return errors.Wrap(err, "send stream begin message failed")
 	}
 
-	// 发送 start 命令开始一个流
+	// Send onStatus message to notify stream start
 	event := make(amf.Object)
 	event["level"] = comm.LevelStatus
 	event["code"] = comm.CodePlayStart
@@ -60,24 +62,30 @@ func (s *ConnServer) RespPlay(cs *chunk.ChunkStream) error {
 	return nil
 }
 
-// RespConnect 服务端将处理结果回应给客户端
+// RespConnect responds to client's connect request and sends control messages
 func (s *ConnServer) RespConnect(cs *chunk.ChunkStream) error {
 	// 响应所属的命令 ID
 	transactionID := s.transactionID
 
-	c := s.Conn.NewWindowAckSize(s.Conn.WindowAckSize)
-	if err := s.Conn.Write(c); err != nil {
-		return err
+	// Send Window Acknowledgement Size control message
+	winAckMsg := chunk.NewWindowAckSize(s.Conn.GetWindowAckSize())
+	err := s.Conn.Write(winAckMsg)
+	if err != nil {
+		return errors.Wrap(err, "send window ack size message failed")
 	}
 
-	c = s.Conn.NewSetPeerBandwidth(s.Conn.RemoteChunkSize)
-	if err := s.Conn.Write(c); err != nil {
-		return err
+	// Send Set Peer Bandwidth control message
+	peerBandwidthMsg := chunk.NewSetPeerBandwidth(s.Conn.GetRemoteChunkSize())
+	err = s.Conn.Write(peerBandwidthMsg)
+	if err != nil {
+		return errors.Wrap(err, "send peer bandwidth message failed")
 	}
 
-	c = s.Conn.NewSetChunkSize(s.Conn.ChunkSize)
-	if err := s.Conn.Write(c); err != nil {
-		return err
+	// Send Set Chunk Size control message
+	chunkSizeMsg := chunk.NewSetChunkSize(s.Conn.GetChunkSize())
+	err = s.Conn.Write(chunkSizeMsg)
+	if err != nil {
+		return errors.Wrap(err, "send chunk size message failed")
 	}
 
 	resp := make(amf.Object)

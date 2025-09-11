@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/nextpkg/goav/amf"
-	"github.com/nextpkg/goav/rtmp/chunk"
+	"github.com/nextpkg/goav/chunk"
 	"github.com/nextpkg/goav/rtmp/comm"
 	"github.com/pkg/errors"
 )

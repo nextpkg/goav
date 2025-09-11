@@ -7,5 +7,4 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/atomic v1.11.0
-	gopkg.in/yaml.v2 v2.2.2 // indirect
 )

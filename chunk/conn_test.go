@@ -32,9 +32,9 @@ func TestReadNormal(t *testing.T) {
 	conn := &Conn{
 		slab:                NewSlab(),
 		Rw:                  NewReadWriter(bytes.NewBuffer(data), 1024),
-		RemoteChunkSize:     128,
-		WindowAckSize:       2500000,
-		RemoteWindowAckSize: 2500000,
+		remoteChunkSize:     128,
+		windowAckSize:       2500000,
+		remoteWindowAckSize: 2500000,
 		Option:              DefaultOption,
 		Chunks:              make(map[uint32]*ChunkStream),
 	}
@@ -84,9 +84,9 @@ func TestCrossReading(t *testing.T) {
 	conn := &Conn{
 		slab:                NewSlab(),
 		Rw:                  NewReadWriter(bytes.NewBuffer(videoData), 1024),
-		RemoteChunkSize:     128,
-		WindowAckSize:       2500000,
-		RemoteWindowAckSize: 2500000,
+		remoteChunkSize:     128,
+		windowAckSize:       2500000,
+		remoteWindowAckSize: 2500000,
 		Chunks:              make(map[uint32]*ChunkStream),
 		Option:              DefaultOption,
 	}
@@ -118,10 +118,10 @@ func TestSetChunksizeForWrite(t *testing.T) {
 		Conn:                i,
 		slab:                NewSlab(),
 		Rw:                  NewReadWriter(buf, 1024),
-		ChunkSize:           128,
-		RemoteChunkSize:     128,
-		WindowAckSize:       2500000,
-		RemoteWindowAckSize: 2500000,
+		chunkSize:           128,
+		remoteChunkSize:     128,
+		windowAckSize:       2500000,
+		remoteWindowAckSize: 2500000,
 		Chunks:              make(map[uint32]*ChunkStream),
 		Option:              DefaultOption,
 	}
@@ -192,10 +192,10 @@ func TestSetChunksize(t *testing.T) {
 	conn := &Conn{
 		slab:                NewSlab(),
 		Rw:                  NewReadWriter(rw, 1024),
-		ChunkSize:           128,
-		RemoteChunkSize:     128,
-		WindowAckSize:       2500000,
-		RemoteWindowAckSize: 2500000,
+		chunkSize:           128,
+		remoteChunkSize:     128,
+		windowAckSize:       2500000,
+		remoteWindowAckSize: 2500000,
 		Chunks:              make(map[uint32]*ChunkStream),
 		Option:              DefaultOption,
 	}
@@ -265,10 +265,10 @@ func TestWrite(t *testing.T) {
 		Conn:                i,
 		slab:                NewSlab(),
 		Rw:                  NewReadWriter(buf, 128),
-		ChunkSize:           128,
-		RemoteChunkSize:     128,
-		WindowAckSize:       2500000,
-		RemoteWindowAckSize: 2500000,
+		chunkSize:           128,
+		remoteChunkSize:     128,
+		windowAckSize:       2500000,
+		remoteWindowAckSize: 2500000,
 		Chunks:              make(map[uint32]*ChunkStream),
 	}
 
@@ -334,5 +334,5 @@ func TestHandleControlMsg(t *testing.T) {
 
 	cs = NewSetChunkSize(4096)
 	at.True(conn.handleControlMsg(cs))
-	at.Equal(uint32(4096), conn.RemoteChunkSize)
+	at.Equal(uint32(4096), conn.remoteChunkSize)
 }

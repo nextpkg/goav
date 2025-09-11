@@ -1,4 +1,4 @@
-package chunk
+package protocol
 
 import (
 	"bytes"
@@ -33,7 +33,7 @@ var (
 	serverPartialKey = serverFullKey[:36]
 )
 
-// 用client key计算C1/S1的摘要, 再用server key计算C1/S1摘要的摘要并返回
+// getDigest calculates digest using client key for C1/S1, then recalculates using server key
 func getDigest(c1s1 []byte, clientKey []byte, serverKey []byte) ([]byte, error) {
 	// schema0: |time: 4bytes|version: 4bytes|key: 764bytes|digest: 764bytes|
 	digestDataPos, err := findDigestPos(c1s1, clientKey, 772)
@@ -54,7 +54,7 @@ func getDigest(c1s1 []byte, clientKey []byte, serverKey []byte) ([]byte, error) 
 	return createDigest(serverKey, c1s1[digestDataPos:digestDataPos+32], -1)
 }
 
-// 构造C1/S1的签名
+// createDigestC1S1 creates digest for C1/S1
 func createDigestC1S1(c1s1 []byte, time uint32, version uint32, serverKey []byte) error {
 	// 随机值
 	n, err := rand.Read(c1s1[8:])
@@ -82,9 +82,8 @@ func createDigestC1S1(c1s1 []byte, time uint32, version uint32, serverKey []byte
 	return nil
 }
 
-// 构造C2/S2的签名
-// 结构:
-//
+// createDigestC2S2 creates digest for C2/S2
+// Structure:
 //	random-data: 1504bytes
 //	digest-data: 32
 func createDigestC2S2(c2s2 []byte, key []byte) error {
@@ -105,9 +104,8 @@ func createDigestC2S2(c2s2 []byte, key []byte) error {
 	return nil
 }
 
-// 找到digest-data的位置, 找不到则返回-1
-// digest结构:
-//
+// findDigestPos finds the position of digest-data, returns -1 if not found
+// digest structure:
 //	offset: 4 bytes
 //	random-data: (offset)bytes
 //	digest-data: 32bytes
@@ -131,9 +129,8 @@ func findDigestPos(c1s1 []byte, clientKey []byte, base int) (int, error) {
 	return digestDataPos, nil
 }
 
-// 获取digest数据的位置
-// digest结构:
-//
+// getDigestDataPos gets the position of digest data
+// digest structure:
 //	offset: 4 bytes
 //	random-data: (offset)bytes
 //	digest-data: 32bytes
@@ -148,7 +145,7 @@ func getDigestDataPos(p []byte, base int) int {
 	return (pos % 728) + base + 4
 }
 
-// 使用key计算src的摘要
+// createDigest calculates digest using key for src data
 func createDigest(key []byte, src []byte, digestDataPos int) ([]byte, error) {
 	h := hmac.New(sha256.New, key)
 	if digestDataPos <= 0 {

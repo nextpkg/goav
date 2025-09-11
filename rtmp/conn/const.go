@@ -1,7 +1,7 @@
 package conn
 
 import (
-	"github.com/nextpkg/goav/rtmp/chunk"
+	"github.com/nextpkg/goav/chunk"
 	"github.com/nextpkg/goav/rtmp/comm"
 )
 

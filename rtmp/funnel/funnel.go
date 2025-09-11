@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/nextpkg/goav/packet"
-	"github.com/nextpkg/goav/rtmp/ce"
+	"github.com/nextpkg/goav/rtmp"
 	"github.com/nextpkg/goav/rtmp/comm"
 	"go.uber.org/atomic"
 )
@@ -108,7 +108,7 @@ func (f *Funnel) Close() {
 // Write 写数据
 func (f *Funnel) Write(pkt *packet.Packet) error {
 	if f.status.Load() {
-		return ce.ErrWriterWasCanceled
+		return rtmp.ErrWriterWasCanceled
 	}
 
 	if len(f.pktChan) < maxQueueLen-1 {
@@ -116,7 +116,7 @@ func (f *Funnel) Write(pkt *packet.Packet) error {
 		return nil
 	}
 
-	return ce.ErrQueueSaturated
+	return rtmp.ErrQueueSaturated
 }
 
 // Wait 等待关闭

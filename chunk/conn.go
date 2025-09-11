@@ -22,11 +22,16 @@ type Option struct {
 	超时时间，限制网络IO的读写超时
 	*/
 	timeout time.Duration
+	/**
+	缓冲区大小，用于设置读写缓冲器的大小，单位字节
+	*/
+	bufSize int
 }
 
 var DefaultOption = Option{
 	maxChunkSize: 100 * 1024 * 1024,
 	timeout:      10 * time.Second,
+	bufSize:      4096, // 默认4KB缓冲区
 }
 
 // Conn 收发RTMP分块
@@ -36,14 +41,14 @@ type Conn struct {
 	rtmp传输的块大小，设置RTMP的最大chunk尺寸。
 	该值越小，CPU使用率越高，延时越低；反之该值越大，CPU使用率越高，延时越高。
 	*/
-	ChunkSize       uint32 // 本地的块大小，按此标准写chunk
-	RemoteChunkSize uint32 // 远程的块大小，按此标准读chunk
+	chunkSize       uint32 // 本地的块大小，按此标准写chunk
+	remoteChunkSize uint32 // 远程的块大小，按此标准读chunk
 	/**
 	接收端确认窗口，设置RTMP确认包的窗口大小。
 	该值显示的是对端已接收的字节数；用来实现控制发送速率而降低拥塞可能的技术，值越大，窗口越大，带宽越大。
 	*/
-	WindowAckSize       uint32 // 接收端接收的最大字节数(确认窗口)
-	RemoteWindowAckSize uint32 // 发送端发送的最大字节数(确认窗口)
+	windowAckSize       uint32 // 接收端接收的最大字节数(确认窗口)
+	remoteWindowAckSize uint32 // 发送端发送的最大字节数(确认窗口)
 	received            uint32 // 已接收的字节数(大于0xf0000000则归零)
 	ackReceived         uint32 // 服务端已接收的字节数（但未确认）
 	sent                uint32 // 已发送的字节数(大于0xf0000000则归零)
@@ -59,24 +64,61 @@ type Conn struct {
 }
 
 // NewConn RTMP连接器
-func NewConn(conn net.Conn, bufSize int) *Conn {
-	return &Conn{
+func NewConn(conn net.Conn, option Option) *Conn {
+	c := &Conn{
 		Conn:                conn,
-		ChunkSize:           128,       // 起始值一定是128
-		RemoteChunkSize:     128,       // 起始值一定是128
-		WindowAckSize:       2500000,   // 默认本地确认窗口(字节)
-		RemoteWindowAckSize: 2500000,   // 默认远程确认窗口(字节)
+		chunkSize:           128,       // 起始值一定是128
+		remoteChunkSize:     128,       // 起始值一定是128
+		windowAckSize:       2500000,   // 默认本地确认窗口(字节)
+		remoteWindowAckSize: 2500000,   // 默认远程确认窗口(字节)
 		bandwidthLimitType:  0,         // 带宽限制, 类型: Soft limit
 		slab:                NewSlab(), // 内存分配器
-		Rw:                  NewReadWriter(conn, bufSize),
+		Rw:                  NewReadWriter(conn, option.bufSize),
 		Chunks:              make(map[uint32]*ChunkStream),
-		Option:              DefaultOption,
+		Option:              option,
 	}
+
+	c.InitSlab(1024, 4096)
+	return c
 }
 
 // InitSlab 初始化内存管理器的阈值
 func (c *Conn) InitSlab(min, max int) {
 	c.slab.Init(min, max)
+}
+
+// Getter methods
+func (c *Conn) GetChunkSize() uint32 {
+	return c.chunkSize
+}
+
+func (c *Conn) GetRemoteChunkSize() uint32 {
+	return c.remoteChunkSize
+}
+
+func (c *Conn) GetWindowAckSize() uint32 {
+	return c.windowAckSize
+}
+
+func (c *Conn) GetRemoteWindowAckSize() uint32 {
+	return c.remoteWindowAckSize
+}
+
+// Setter methods
+func (c *Conn) SetChunkSize(size uint32) {
+	c.chunkSize = size
+}
+
+func (c *Conn) SetRemoteChunkSize(size uint32) {
+	c.remoteChunkSize = size
+}
+
+func (c *Conn) SetWindowAckSize(size uint32) {
+	c.windowAckSize = size
+}
+
+func (c *Conn) SetRemoteWindowAckSize(size uint32) {
+	c.remoteWindowAckSize = size
 }
 
 // Read 【读锁】读取一个完整chunk的数据
@@ -111,7 +153,7 @@ func (c *Conn) Write(cs *ChunkStream) error {
 		ackSent := atomic.LoadUint32(&c.ackSent)
 
 		// 为避免客户端一直接收不过来，这里采用了丢包的策略
-		if c.sent > c.WindowAckSize && c.sent > 3*ackSent {
+		if c.sent > c.windowAckSize && c.sent > 3*ackSent {
 			slog.Error("sent>3*ackSent", "send", c.sent, "ackSent", ackSent)
 			return nil
 		}
@@ -121,7 +163,7 @@ func (c *Conn) Write(cs *ChunkStream) error {
 	defer c.wLocker.Unlock()
 
 	// 只写不读
-	err := cs.WriteChunk(c.Rw, c.ChunkSize)
+	err := cs.WriteChunk(c.Rw, c.chunkSize)
 	if err != nil {
 		return err
 	}
@@ -168,10 +210,10 @@ func (c *Conn) getIntactChunk() (*ChunkStream, error) {
 
 	for {
 		// 放弃过长的chunk
-		if counter*c.ChunkSize > c.Option.maxChunkSize {
-			return nil, fmt.Errorf("chunk too large(single chunk %d > %d), discard it",
-				counter*c.ChunkSize, c.Option.maxChunkSize)
-		}
+	if counter*c.chunkSize > c.Option.maxChunkSize {
+		return nil, fmt.Errorf("chunk too large(single chunk %d > %d), discard it",
+			counter*c.chunkSize, c.Option.maxChunkSize)
+	}
 
 		// 读取一个字节, 以大端的形式保存到h中
 		basicHeader, err := c.Rw.ReadUintBE(1)
@@ -196,7 +238,7 @@ func (c *Conn) getIntactChunk() (*ChunkStream, error) {
 		ncs.FormatTmp = format
 
 		// read chunk
-		err = ncs.ReadChunk(c.Rw, c.RemoteChunkSize, c.slab)
+		err = ncs.ReadChunk(c.Rw, c.remoteChunkSize, c.slab)
 		if err != nil {
 			return nil, err
 		}
@@ -230,12 +272,12 @@ func (c *Conn) setChunkSize(cs *ChunkStream) {
 	}
 
 	// 任何块不可能比消息(最大值0xFFFFFF)大
-	if c.RemoteChunkSize > 0xFFFFFF {
+	if c.remoteChunkSize > 0xFFFFFF {
 		remoteChunkSize = 0xFFFFFF
 	}
 
 	// 设置块大小，用于通知另一端新的最大块大小
-	c.RemoteChunkSize = remoteChunkSize
+	c.remoteChunkSize = remoteChunkSize
 	slog.Debug("remote chunk size is changed to", "size", remoteChunkSize)
 }
 
@@ -288,8 +330,8 @@ func (c *Conn) handleControlMsg(cs *ChunkStream) bool {
 		return true
 	case IDWindowAckSize:
 		// 客户端或服务端发送该消息来通知对端发送确认消息所使用的视窗大小
-		c.RemoteWindowAckSize = binary.BigEndian.Uint32(cs.Data)
-		return true
+	c.remoteWindowAckSize = binary.BigEndian.Uint32(cs.Data)
+	return true
 	case IDSetPeerBandwidth:
 		c.setPeerBandwidth(cs)
 		return true
@@ -338,7 +380,7 @@ func (c *Conn) ack(received uint32) {
 
 	// 已接收但未确认的数据总数
 	c.ackReceived += received
-	if c.ackReceived >= c.RemoteWindowAckSize {
+	if c.ackReceived >= c.remoteWindowAckSize {
 		cs := NewAck(c.ackReceived)
 		err := c.Write(cs)
 		if err != nil {
